@@ -1,0 +1,140 @@
+<UserControl x:Class="FinMind.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" PanningMode="Both">
+        <StackPanel Margin="28,24,28,28" MinWidth="620">
+
+            <!-- Заголовок + вибір місяця -->
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource H1}" Text="Дашборд"/>
+                    <TextBlock Style="{StaticResource Subtle}" Text="Огляд ваших фінансів"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource IconButton}" Content="◀" Command="{Binding PreviousMonthCommand}" ToolTip="Попередній місяць"/>
+                    <TextBlock Text="{Binding MonthTitle}" MinWidth="150" TextAlignment="Center"
+                               VerticalAlignment="Center" FontWeight="SemiBold" Margin="10,0"/>
+                    <Button Style="{StaticResource IconButton}" Content="▶" Command="{Binding NextMonthCommand}" ToolTip="Наступний місяць"/>
+                </StackPanel>
+            </Grid>
+
+            <ProgressBar IsIndeterminate="True" Margin="0,0,0,12"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolVis}}"/>
+
+            <!-- Віджети-картки -->
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource Card}" Margin="0,0,8,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Subtle}" Text="💰  Поточний баланс"/>
+                        <TextBlock FontSize="26" FontWeight="Bold" Margin="0,8,0,0" TextWrapping="Wrap"
+                                   Text="{Binding Balance, Converter={StaticResource CurrencyConv}}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Grid.Column="1" Margin="8,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Subtle}" Text="📉  Витрати за місяць"/>
+                        <TextBlock FontSize="26" FontWeight="Bold" Margin="0,8,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource ExpenseBrush}"
+                                   Text="{Binding MonthExpenses, Converter={StaticResource CurrencyConv}}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Grid.Column="2" Margin="8,0,0,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Subtle}" Text="📈  Доходи за місяць"/>
+                        <TextBlock FontSize="26" FontWeight="Bold" Margin="0,8,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource IncomeBrush}"
+                                   Text="{Binding MonthIncome, Converter={StaticResource CurrencyConv}}"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Діаграма + розбивка -->
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,8,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource H2}" Text="Витрати за категоріями" Margin="0,0,0,8"/>
+                        <Grid Height="320">
+                            <lvc:PieChart Series="{Binding Series}" LegendPosition="Hidden"
+                                          Visibility="{Binding HasChartData, Converter={StaticResource BoolVis}}"/>
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                        Visibility="{Binding HasChartData, Converter={StaticResource BoolVis}, ConverterParameter=Invert}">
+                                <TextBlock Text="🍩" FontSize="40" HorizontalAlignment="Center"/>
+                                <TextBlock Style="{StaticResource Subtle}" Text="У цьому місяці витрат ще немає"
+                                           TextAlignment="Center" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Grid.Column="1" Margin="8,0,0,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource H2}" Text="Розбивка" Margin="0,0,0,12"/>
+                        <ItemsControl ItemsSource="{Binding Breakdown}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Width="12" Height="12" Margin="0,0,10,0" VerticalAlignment="Center"
+                                                 Fill="{Binding ColorHex, Converter={StaticResource HexBrush}}"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock FontWeight="SemiBold">
+                                                <Run Text="{Binding Icon, Mode=OneWay}"/>
+                                                <Run Text="{Binding Name, Mode=OneWay}"/>
+                                            </TextBlock>
+                                            <TextBlock Style="{StaticResource Subtle}" FontSize="12"
+                                                       Text="{Binding Percent, StringFormat={}{0:N1}% витрат}"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="2" FontWeight="SemiBold" VerticalAlignment="Center"
+                                                   Text="{Binding Amount, Converter={StaticResource CurrencyConv}}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Швидке додавання через ШІ -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource H2}" Text="✨ Швидке додавання через ШІ"/>
+                    <TextBlock Style="{StaticResource Subtle}" Margin="0,4,0,12"
+                               Text="Опишіть витрату або дохід своїми словами — Gemini сам визначить суму, категорію та дату. Наприклад: «Кава та круасан 120 грн» або «Отримав зарплату 25000»."/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding QuickText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,10,0">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding AddViaAiCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Content="Додати через ШІ" Command="{Binding AddViaAiCommand}"/>
+                    </Grid>
+                    <ProgressBar IsIndeterminate="True" Margin="0,12,0,0"
+                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolVis}}"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

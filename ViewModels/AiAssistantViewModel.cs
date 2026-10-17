@@ -1,0 +1,181 @@
+using System;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.IO;
+using System.Windows.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using FinMind.Models;
+using FinMind.Services;
+
+namespace FinMind.ViewModels;
+
+/// <summary>Сканер чеків (Gemini Vision) та фінансовий радник.</summary>
+public partial class AiAssistantViewModel : ViewModelBase
+{
+    private static readonly CultureInfo Ua = new("uk-UA");
+    private readonly TransactionService _transactions = new();
+    private readonly GeminiAiService _ai = new();
+
+    public ObservableCollection<Category> Categories { get; } = new();
+
+    // Сканер
+    [ObservableProperty] private bool _isScanBusy;
+    [ObservableProperty] private BitmapSource? _preview;
+    [ObservableProperty] private bool _hasScanResult;
+    [ObservableProperty] private string _scanAmount = string.Empty;
+    [ObservableProperty] private string _scanStore = string.Empty;
+    [ObservableProperty] private Category? _scanCategory;
+    [ObservableProperty] private DateTime? _scanDate = DateTime.Today;
+
+    // Радник
+    [ObservableProperty] private bool _isAdviceBusy;
+    [ObservableProperty] private bool _hasAdvice;
+    [ObservableProperty] private string _adviceText = string.Empty;
+
+    public override async Task OnNavigatedToAsync()
+    {
+        try
+        {
+            var cats = await _transactions.GetCategoriesAsync();
+            var selectedId = ScanCategory?.Id;
+            Categories.Clear();
+            foreach (var c in cats) Categories.Add(c);
+            ScanCategory = Categories.FirstOrDefault(c => c.Id == selectedId);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Error($"Не вдалося завантажити категорії: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task PickAndScanAsync()
+    {
+        var path = DialogService.PickImage();
+        if (path != null) await ScanFileAsync(path);
+    }
+
+    /// <summary>Також викликається при перетягуванні файлу на сторінку (drag &amp; drop).</summary>
+    [RelayCommand]
+    private async Task ScanFileAsync(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        try
+        {
+            IsScanBusy = true;
+            HasScanResult = false;
+
+            // Декодування та стиснення — у фоновому потоці, щоб UI не «підвисав».
+            var (jpeg, preview) = await Task.Run(() => ImageHelper.Prepare(path));
+            Preview = preview;
+
+            var categories = await _transactions.GetCategoriesAsync();
+            Categories.Clear();
+            foreach (var c in categories) Categories.Add(c);
+
+            var result = await _ai.ScanReceiptAsync(jpeg, "image/jpeg", categories.Select(c => c.Name));
+
+            ScanAmount = result.TotalAmount.ToString("0.00", Ua);
+            ScanStore = result.StoreName;
+            ScanCategory = Categories.FirstOrDefault(c => c.Id == TransactionService.Resolve(categories, result.Category).Id);
+            ScanDate = result.Date ?? DateTime.Today;
+            HasScanResult = true;
+            NotificationService.Info("Чек розпізнано. Перевірте дані та збережіть ✅");
+        }
+        catch (AiServiceException ex)
+        {
+            NotificationService.Error(ex.Message);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or FileFormatException or IOException)
+        {
+            NotificationService.Error("Не вдалося відкрити зображення. Підтримуються JPG, PNG, BMP, TIFF, GIF.");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Error($"Помилка сканування: {ex.Message}");
+        }
+        finally
+        {
+            IsScanBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveReceiptAsync()
+    {
+        if (!AmountParser.TryParse(ScanAmount, out var amount) || amount <= 0)
+        {
+            NotificationService.Error("Вкажіть коректну суму чека.");
+            return;
+        }
+        if (ScanCategory == null)
+        {
+            NotificationService.Error("Оберіть категорію.");
+            return;
+        }
+
+        try
+        {
+            IsScanBusy = true;
+            await _transactions.AddAsync(new Transaction
+            {
+                Amount = Math.Round(amount, 2),
+                Type = TransactionType.Expense,
+                CategoryId = ScanCategory.Id,
+                Date = (ScanDate ?? DateTime.Today).Date,
+                Description = string.IsNullOrWhiteSpace(ScanStore) ? "Чек" : ScanStore.Trim()
+            });
+            NotificationService.Info("Витрату з чека збережено ✅");
+            DiscardScan();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Error($"Не вдалося зберегти: {ex.Message}");
+        }
+        finally
+        {
+            IsScanBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void DiscardScan()
+    {
+        HasScanResult = false;
+        Preview = null;
+        ScanAmount = string.Empty;
+        ScanStore = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task GetAdviceAsync()
+    {
+        try
+        {
+            IsAdviceBusy = true;
+            var stats = await _transactions.BuildAdviceStatsAsync(30);
+            if (stats == null)
+            {
+                NotificationService.Error("За останні 30 днів немає транзакцій — додайте кілька записів для аналізу.");
+                return;
+            }
+
+            AdviceText = await _ai.GetBudgetAdviceAsync(stats);
+            HasAdvice = !string.IsNullOrWhiteSpace(AdviceText);
+        }
+        catch (AiServiceException ex)
+        {
+            NotificationService.Error(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Error($"Не вдалося отримати аналіз: {ex.Message}");
+        }
+        finally
+        {
+            IsAdviceBusy = false;
+        }
+    }
+}

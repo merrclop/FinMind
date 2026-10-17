@@ -1,0 +1,88 @@
+﻿using System.Windows;
+using System.Windows.Input;
+using FinMind.Services;
+using FinMind.ViewModels;
+
+namespace FinMind;
+
+/// <summary>Головне вікно: жести масштабування (Ctrl+колесо, щипок двома пальцями) та адаптивність.</summary>
+public partial class MainWindow : Window
+{
+    private readonly MainViewModel _vm = new();
+
+    // Відстеження дотиків для жесту «щипок» (pinch-to-zoom)
+    private readonly Dictionary<int, Point> _touches = new();
+    private double _lastPinchDistance;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        DataContext = _vm;
+        RootGrid.LayoutTransform = ZoomState.Transform;
+
+        SourceInitialized += (_, _) => ThemeManager.ApplyTitleBar(this);
+        Loaded += async (_, _) =>
+        {
+            _vm.UpdateLayoutMode(ActualWidth / SettingsService.Instance.UiScale);
+            await _vm.NavigateCommand.ExecuteAsync("Dashboard");
+        };
+        SizeChanged += (_, _) => _vm.UpdateLayoutMode(ActualWidth / SettingsService.Instance.UiScale);
+        SettingsService.Instance.UiScaleChanged += () => _vm.UpdateLayoutMode(ActualWidth / SettingsService.Instance.UiScale);
+        Closing += (_, _) => SettingsService.Instance.Save();
+    }
+
+    // ───────── Ctrl + колесо миші / щипок на тачпаді (Windows надсилає його як Ctrl+Wheel) ─────────
+    protected override void OnPreviewMouseWheel(MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            SettingsService.Instance.UiScale += e.Delta > 0 ? 0.1 : -0.1;
+            e.Handled = true;
+        }
+        base.OnPreviewMouseWheel(e);
+    }
+
+    // ───────── Щипок двома пальцями на сенсорному екрані ─────────
+    protected override void OnPreviewTouchDown(TouchEventArgs e)
+    {
+        _touches[e.TouchDevice.Id] = e.GetTouchPoint(this).Position;
+        _lastPinchDistance = _touches.Count == 2 ? CurrentDistance() : 0;
+        base.OnPreviewTouchDown(e);
+    }
+
+    protected override void OnPreviewTouchMove(TouchEventArgs e)
+    {
+        if (_touches.ContainsKey(e.TouchDevice.Id))
+        {
+            _touches[e.TouchDevice.Id] = e.GetTouchPoint(this).Position;
+
+            if (_touches.Count == 2)
+            {
+                var distance = CurrentDistance();
+                if (_lastPinchDistance > 10 && distance > 10)
+                {
+                    var ratio = distance / _lastPinchDistance;
+                    if (Math.Abs(ratio - 1) > 0.01)
+                    {
+                        SettingsService.Instance.UiScale *= ratio;
+                        _lastPinchDistance = distance;
+                    }
+                }
+            }
+        }
+        base.OnPreviewTouchMove(e);
+    }
+
+    protected override void OnPreviewTouchUp(TouchEventArgs e)
+    {
+        _touches.Remove(e.TouchDevice.Id);
+        _lastPinchDistance = 0;
+        base.OnPreviewTouchUp(e);
+    }
+
+    private double CurrentDistance()
+    {
+        var points = _touches.Values.Take(2).ToArray();
+        return points.Length < 2 ? 0 : (points[0] - points[1]).Length;
+    }
+}

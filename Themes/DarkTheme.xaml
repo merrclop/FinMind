@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Палітра темної теми -->
+    <SolidColorBrush x:Key="BgBrush" Color="#0F1115"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#161922"/>
+    <SolidColorBrush x:Key="CardBrush" Color="#1D212B"/>
+    <SolidColorBrush x:Key="LineBrush" Color="#2B303C"/>
+    <SolidColorBrush x:Key="TextBrush" Color="#E9ECF2"/>
+    <SolidColorBrush x:Key="SubtleBrush" Color="#9AA3B2"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="#4C8DFF"/>
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#1F3358"/>
+    <SolidColorBrush x:Key="HoverBrush" Color="#272C38"/>
+    <SolidColorBrush x:Key="InputBrush" Color="#14171E"/>
+    <SolidColorBrush x:Key="IncomeBrush" Color="#34D399"/>
+    <SolidColorBrush x:Key="ExpenseBrush" Color="#F87171"/>
+
+    <!-- Системні кольори: щоб стандартні елементи (календар, DataGrid, виділення) теж були темними -->
+    <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#161922"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#E9ECF2"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="#1D212B"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="#E9ECF2"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#4C8DFF"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#2A3A5E"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="#E9ECF2"/>
+    <SolidColorBrush x:Key="{x:Static SystemColors.GrayTextBrushKey}" Color="#7B8494"/>
+</ResourceDictionary>

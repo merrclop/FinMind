@@ -1,0 +1,73 @@
+﻿using System.Text.Json;
+using FinMind.Models;
+
+namespace FinMind.Services;
+
+/// <summary>Читання/запис settings.json. Ключ API береться звідси (або зі змінної середовища GEMINI_API_KEY).</summary>
+public sealed class SettingsService
+{
+    public static SettingsService Instance { get; } = new();
+
+    private readonly string _path = Path.Combine(AppPaths.Folder, "settings.json");
+    private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
+
+    public AppSettings Current { get; private set; } = new();
+
+    /// <summary>Спрацьовує, коли змінився масштаб (колесо миші, щипок, слайдер, кнопки).</summary>
+    public event Action? UiScaleChanged;
+
+    public double UiScale
+    {
+        get => Current.UiScale;
+        set
+        {
+            var v = Math.Round(Math.Clamp(value, 0.6, 2.5), 2);
+            if (Math.Abs(v - Current.UiScale) < 0.001) return;
+            Current.UiScale = v;
+            ZoomState.Apply(v);
+            UiScaleChanged?.Invoke();
+        }
+    }
+
+    public string CurrencySymbol => Current.Currency switch
+    {
+        "USD" => "$",
+        "EUR" => "€",
+        _ => "₴"
+    };
+
+    public string EffectiveApiKey =>
+        !string.IsNullOrWhiteSpace(Current.GeminiApiKey)
+            ? Current.GeminiApiKey.Trim()
+            : Environment.GetEnvironmentVariable("GEMINI_API_KEY")?.Trim() ?? string.Empty;
+
+    public async Task LoadAsync()
+    {
+        try
+        {
+            if (File.Exists(_path))
+            {
+                await using var stream = File.OpenRead(_path);
+                Current = await JsonSerializer.DeserializeAsync<AppSettings>(stream) ?? new AppSettings();
+            }
+        }
+        catch
+        {
+            Current = new AppSettings();   // пошкоджений файл — стартуємо з типових налаштувань
+        }
+        Current.UiScale = Math.Clamp(Current.UiScale, 0.6, 2.5);
+        ZoomState.Apply(Current.UiScale);
+    }
+
+    public async Task SaveAsync()
+    {
+        await using var stream = File.Create(_path);
+        await JsonSerializer.SerializeAsync(stream, Current, Json);
+    }
+
+    /// <summary>Синхронний запис — для закриття вікна.</summary>
+    public void Save()
+    {
+        try { File.WriteAllText(_path, JsonSerializer.Serialize(Current, Json)); } catch { /* ігноруємо */ }
+    }
+}

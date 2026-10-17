@@ -1,0 +1,131 @@
+using System.Diagnostics;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using FinMind.Services;
+
+namespace FinMind.ViewModels;
+
+/// <summary>Налаштування: ключ Gemini, модель, валюта, тема, масштаб.</summary>
+public partial class SettingsViewModel : ViewModelBase
+{
+    private readonly SettingsService _settings = SettingsService.Instance;
+    private readonly GeminiAiService _ai = new();
+
+    public string[] Currencies { get; } = { "UAH", "USD", "EUR" };
+    public string[] Themes { get; } = { "Темна", "Світла" };
+
+    [ObservableProperty] private string _apiKey = string.Empty;
+    [ObservableProperty] private string _model = string.Empty;
+    [ObservableProperty] private string _selectedCurrency = "UAH";
+    [ObservableProperty] private string _selectedTheme = "Темна";
+    [ObservableProperty] private bool _showApiKey;
+
+    private double _uiScalePercentValue = 100;
+    /// <summary>Масштаб у відсотках (60–250). Синхронізується з колесом миші / щипком.</summary>
+    public double UiScalePercent
+    {
+        get => _uiScalePercentValue;
+        set
+        {
+            if (Math.Abs(value - _uiScalePercentValue) < 0.1) return;
+            _uiScalePercentValue = value;
+            // Оновлюємо масштаб у SettingsService
+            var newScale = value / 100.0;
+            if (Math.Abs(newScale - _settings.UiScale) > 0.001)
+            {
+                _settings.UiScale = newScale;
+            }
+            OnPropertyChanged();
+        }
+    }
+
+    public string StoragePath => AppPaths.Folder;
+
+    public SettingsViewModel()
+    {
+        // Ініціалізуємо масштаб з поточного значення
+        _uiScalePercentValue = Math.Round(_settings.UiScale * 100);
+        // Слухаємо зміни масштабу з інших джерел (колесо миші, щипок)
+        _settings.UiScaleChanged += () => 
+        {
+            _uiScalePercentValue = Math.Round(_settings.UiScale * 100);
+            OnPropertyChanged(nameof(UiScalePercent));
+        };
+    }
+
+    public override Task OnNavigatedToAsync()
+    {
+        var s = _settings.Current;
+        ApiKey = s.GeminiApiKey;
+        Model = s.GeminiModel;
+        SelectedCurrency = s.Currency;
+        SelectedTheme = s.Theme == "Light" ? "Світла" : "Темна";
+        UiScalePercent = Math.Round(s.UiScale * 100);
+        return Task.CompletedTask;
+    }
+
+    private void ApplyToSettings()
+    {
+        var s = _settings.Current;
+        s.GeminiApiKey = ApiKey.Trim();
+        s.GeminiModel = string.IsNullOrWhiteSpace(Model) ? "gemini-2.5-flash" : Model.Trim();
+        s.Currency = SelectedCurrency;
+        s.Theme = SelectedTheme == "Світла" ? "Light" : "Dark";
+    }
+
+    [RelayCommand]
+    private async Task SaveAsync()
+    {
+        try
+        {
+            IsBusy = true;
+            ApplyToSettings();
+            await _settings.SaveAsync();
+            ThemeManager.Apply(_settings.Current.Theme);
+            // Оновимо SelectedTheme після збереження, щоб синхронізувати UI з даними
+            SelectedTheme = _settings.Current.Theme == "Light" ? "Світла" : "Темна";
+            NotificationService.Info("Налаштування збережено ✅");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Error($"Не вдалося зберегти налаштування: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task TestConnectionAsync()
+    {
+        try
+        {
+            IsBusy = true;
+            ApplyToSettings();               // перевіряємо введені значення, ще не записуючи їх у файл
+            await _ai.PingAsync();
+            NotificationService.Info("З'єднання з Gemini успішне ✅");
+        }
+        catch (AiServiceException ex)
+        {
+            NotificationService.Error(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Error($"Помилка перевірки: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand] private void ResetZoom() => _settings.UiScale = 1.0;
+
+    [RelayCommand]
+    private void OpenDataFolder()
+    {
+        try { Process.Start(new ProcessStartInfo(StoragePath) { UseShellExecute = true }); }
+        catch (Exception ex) { NotificationService.Error($"Не вдалося відкрити папку: {ex.Message}"); }
+    }
+}

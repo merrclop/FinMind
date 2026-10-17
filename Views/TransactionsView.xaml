@@ -1,0 +1,192 @@
+<UserControl x:Class="FinMind.Views.TransactionsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer x:Name="PageScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" PanningMode="Both">
+        <StackPanel Margin="28,24,28,28" MinWidth="620">
+
+            <!-- Заголовок + кнопки -->
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource H1}" Text="Транзакції"/>
+                    <TextBlock Style="{StaticResource Subtle}" Text="Подвійний клік по рядку — редагування"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource SecondaryButton}" Content="📤  Експорт у CSV"
+                            Command="{Binding ExportCommand}" Margin="0,0,10,0"/>
+                    <Button Content="➕  Додати вручну" Command="{Binding AddNewCommand}"/>
+                </StackPanel>
+            </Grid>
+
+            <ProgressBar IsIndeterminate="True" Margin="0,0,0,12"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolVis}}"/>
+
+            <!-- Форма додавання / редагування -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+                    Visibility="{Binding IsFormOpen, Converter={StaticResource BoolVis}}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource H2}" Text="{Binding FormTitle}" Margin="0,0,0,14"/>
+                    <WrapPanel>
+                        <StackPanel Margin="0,0,14,12">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Тип"/>
+                            <StackPanel Orientation="Horizontal" MinHeight="40">
+                                <RadioButton Content="Витрата" IsChecked="{Binding FormIsExpense}" Margin="0,0,16,0"
+                                             VerticalAlignment="Center" Cursor="Hand"/>
+                                <RadioButton Content="Дохід" IsChecked="{Binding FormIsIncome}"
+                                             VerticalAlignment="Center" Cursor="Hand"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,14,12">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Сума"/>
+                            <TextBox Width="150" Text="{Binding FormAmount, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,14,12">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Категорія"/>
+                            <ComboBox Width="220" ItemsSource="{Binding Categories}" SelectedItem="{Binding FormCategory}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Icon}" FontFamily="Segoe UI Emoji, Segoe UI" Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,14,12">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Дата"/>
+                            <DatePicker Width="170" SelectedDate="{Binding FormDate}"/>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="Опис"/>
+                            <TextBox Width="320" MaxLength="200" Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </WrapPanel>
+                    <TextBlock Text="{Binding FormError}" Foreground="{DynamicResource ExpenseBrush}" Margin="0,0,0,10"
+                               TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="💾  Зберегти" Command="{Binding SaveCommand}" Margin="0,0,10,0"/>
+                        <Button Style="{StaticResource SecondaryButton}" Content="Скасувати" Command="{Binding CancelFormCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Фільтри -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,16" Padding="20,16,20,4">
+                <WrapPanel>
+                    <StackPanel Margin="0,0,14,12">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Від дати"/>
+                        <DatePicker Width="170" SelectedDate="{Binding FilterFrom}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,14,12">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="До дати"/>
+                        <DatePicker Width="170" SelectedDate="{Binding FilterTo}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,14,12">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="Категорія"/>
+                        <ComboBox Width="220" ItemsSource="{Binding FilterCategories}" SelectedItem="{Binding FilterCategory}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Icon}" FontFamily="Segoe UI Emoji, Segoe UI" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding Name}"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel VerticalAlignment="Bottom" Margin="0,0,0,12">
+                        <Button Style="{StaticResource SecondaryButton}" Content="Скинути фільтри"
+                                Command="{Binding ClearFiltersCommand}"/>
+                    </StackPanel>
+                </WrapPanel>
+            </Border>
+
+            <!-- Таблиця -->
+            <Border Style="{StaticResource Card}" Padding="8,8,8,12">
+                <StackPanel>
+                    <DataGrid x:Name="TxGrid" ItemsSource="{Binding PageItems}"
+                              ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="Grid_PreviewMouseWheel"
+                              MouseDoubleClick="Grid_MouseDoubleClick"
+                              Visibility="{Binding HasItems, Converter={StaticResource BoolVis}}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Дата" Binding="{Binding Date, StringFormat=dd.MM.yyyy}" Width="110"/>
+                            <DataGridTemplateColumn Header="Категорія" Width="190">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                     Fill="{Binding Category.ColorHex, Converter={StaticResource HexBrush}}"/>
+                                            <TextBlock Text="{Binding Category.Icon}" FontFamily="Segoe UI Emoji, Segoe UI" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{Binding Category.Name}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Опис" Width="*" MinWidth="160">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Description}" TextWrapping="Wrap"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Сума" Width="160">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Style="{StaticResource AmountText}"
+                                                   Text="{Binding Converter={StaticResource TxAmountConv}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="" Width="Auto">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Style="{StaticResource IconButton}" Content="✏️" ToolTip="Редагувати"
+                                                    Command="{Binding DataContext.EditCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Margin="0,0,6,0"/>
+                                            <Button Style="{StaticResource DangerButton}" Content="🗑" ToolTip="Видалити"
+                                                    Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel HorizontalAlignment="Center" Margin="0,36"
+                                Visibility="{Binding HasItems, Converter={StaticResource BoolVis}, ConverterParameter=Invert}">
+                        <TextBlock Text="🧾" FontSize="40" HorizontalAlignment="Center"/>
+                        <TextBlock Style="{StaticResource Subtle}" Text="Транзакцій не знайдено" Margin="0,8,0,0"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Пагінація -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+                        <Button Style="{StaticResource IconButton}" Content="◀" Command="{Binding PreviousPageCommand}"/>
+                        <TextBlock Text="{Binding PageInfo}" Style="{StaticResource Subtle}" VerticalAlignment="Center"
+                                   Margin="16,0" TextWrapping="NoWrap"/>
+                        <Button Style="{StaticResource IconButton}" Content="▶" Command="{Binding NextPageCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

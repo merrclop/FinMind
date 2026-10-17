@@ -1,0 +1,28 @@
+﻿using System.Windows.Media;
+
+namespace FinMind.Services;
+
+/// <summary>
+/// Єдиний ScaleTransform для масштабування інтерфейсу.
+/// Його використовують і корінь вікна, і випадаючі списки/календарі (Popup не успадковує
+/// трансформацію батька, тому йому підставляється той самий об'єкт).
+/// 
+/// Замість модифікації замороженого Transform, створюємо новий та оновлюємо посилання.
+/// </summary>
+public static class ZoomState
+{
+    private static ScaleTransform _transform = new(1, 1);
+
+    public static ScaleTransform Transform 
+    { 
+        get => _transform;
+        private set => _transform = value;
+    }
+
+    public static void Apply(double scale)
+    {
+        // Завжди створюємо новий Transform, щоб уникнути проблеми зі замороженням
+        var newTransform = new ScaleTransform(scale, scale);
+        Transform = newTransform;
+    }
+}

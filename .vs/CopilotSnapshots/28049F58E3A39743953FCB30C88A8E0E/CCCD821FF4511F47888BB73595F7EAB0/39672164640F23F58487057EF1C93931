@@ -1,0 +1,139 @@
+﻿<Window x:Class="FinMind.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:FinMind.ViewModels"
+        xmlns:views="clr-namespace:FinMind.Views"
+        Title="FinMind — персональні фінанси"
+        Width="1320" Height="820" MinWidth="420" MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BgBrush}"
+        Foreground="{DynamicResource TextBrush}"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Stylus.IsPressAndHoldEnabled="False">
+
+    <Window.Resources>
+        <!-- Зіставлення ViewModel → View -->
+        <DataTemplate DataType="{x:Type vm:DashboardViewModel}"><views:DashboardView/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TransactionsViewModel}"><views:TransactionsView/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AiAssistantViewModel}"><views:AiAssistantView/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView/></DataTemplate>
+    </Window.Resources>
+
+    <!-- Гарячі клавіші: навігація та масштаб -->
+    <Window.InputBindings>
+        <KeyBinding Key="D1" Modifiers="Ctrl" Command="{Binding NavigateCommand}" CommandParameter="Dashboard"/>
+        <KeyBinding Key="D2" Modifiers="Ctrl" Command="{Binding NavigateCommand}" CommandParameter="Transactions"/>
+        <KeyBinding Key="D3" Modifiers="Ctrl" Command="{Binding NavigateCommand}" CommandParameter="Ai"/>
+        <KeyBinding Key="D4" Modifiers="Ctrl" Command="{Binding NavigateCommand}" CommandParameter="Settings"/>
+        <KeyBinding Key="OemPlus" Modifiers="Ctrl" Command="{Binding ZoomInCommand}"/>
+        <KeyBinding Key="Add" Modifiers="Ctrl" Command="{Binding ZoomInCommand}"/>
+        <KeyBinding Key="OemMinus" Modifiers="Ctrl" Command="{Binding ZoomOutCommand}"/>
+        <KeyBinding Key="Subtract" Modifiers="Ctrl" Command="{Binding ZoomOutCommand}"/>
+        <KeyBinding Key="D0" Modifiers="Ctrl" Command="{Binding ResetZoomCommand}"/>
+        <KeyBinding Key="NumPad0" Modifiers="Ctrl" Command="{Binding ResetZoomCommand}"/>
+    </Window.InputBindings>
+
+    <!-- RootGrid масштабується через LayoutTransform (як зум у браузері): макет перебудовується під новий розмір -->
+    <Grid x:Name="RootGrid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ═════════ Бічне меню ═════════ -->
+        <Border Grid.Column="0" Width="{Binding SidebarWidth}"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Масштаб -->
+                <StackPanel DockPanel.Dock="Bottom" Margin="10,8,10,16">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Orientation" Value="Horizontal"/>
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSidebarCompact}" Value="True">
+                                    <Setter Property="Orientation" Value="Vertical"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <Button Style="{StaticResource IconButton}" Content="−" Command="{Binding ZoomOutCommand}"
+                            ToolTip="Зменшити масштаб (Ctrl + −)" Margin="2"/>
+                    <Button Style="{StaticResource IconButton}" Content="{Binding ZoomText}"
+                            Command="{Binding ResetZoomCommand}" MinWidth="58" Margin="2"
+                            ToolTip="Скинути масштаб (Ctrl + 0)"/>
+                    <Button Style="{StaticResource IconButton}" Content="+" Command="{Binding ZoomInCommand}"
+                            ToolTip="Збільшити масштаб (Ctrl + +)" Margin="2"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <!-- Логотип + згортання меню -->
+                    <Grid Margin="14,18,14,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource IconButton}" Content="☰" Command="{Binding ToggleSidebarCommand}"
+                                ToolTip="Згорнути / розгорнути меню"/>
+                        <TextBlock Grid.Column="1" Text="FinMind" FontSize="20" FontWeight="Bold"
+                                   Margin="12,0,0,0" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   Visibility="{Binding IsSidebarCompact, Converter={StaticResource BoolVis}, ConverterParameter=Invert}"/>
+                    </Grid>
+
+                    <RadioButton Style="{StaticResource NavRadio}" Tag="📊" Content="Дашборд"
+                                 Command="{Binding NavigateCommand}" CommandParameter="Dashboard"
+                                 IsChecked="{Binding CurrentPage, Mode=OneWay, Converter={StaticResource EqConv}, ConverterParameter=Dashboard}"
+                                 ToolTip="Дашборд (Ctrl+1)"/>
+                    <RadioButton Style="{StaticResource NavRadio}" Tag="💳" Content="Транзакції"
+                                 Command="{Binding NavigateCommand}" CommandParameter="Transactions"
+                                 IsChecked="{Binding CurrentPage, Mode=OneWay, Converter={StaticResource EqConv}, ConverterParameter=Transactions}"
+                                 ToolTip="Транзакції (Ctrl+2)"/>
+                    <RadioButton Style="{StaticResource NavRadio}" Tag="✨" Content="ШІ-Асистент"
+                                 Command="{Binding NavigateCommand}" CommandParameter="Ai"
+                                 IsChecked="{Binding CurrentPage, Mode=OneWay, Converter={StaticResource EqConv}, ConverterParameter=Ai}"
+                                 ToolTip="ШІ-Асистент (Ctrl+3)"/>
+                    <RadioButton Style="{StaticResource NavRadio}" Tag="⚙️" Content="Налаштування"
+                                 Command="{Binding NavigateCommand}" CommandParameter="Settings"
+                                 IsChecked="{Binding CurrentPage, Mode=OneWay, Converter={StaticResource EqConv}, ConverterParameter=Settings}"
+                                 ToolTip="Налаштування (Ctrl+4)"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ═════════ Контент + сповіщення ═════════ -->
+        <Grid Grid.Column="1">
+            <ContentControl Content="{Binding CurrentViewModel}"/>
+
+            <Border HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="24" Padding="16,12"
+                    CornerRadius="12" MaxWidth="640"
+                    Visibility="{Binding IsToastVisible, Converter={StaticResource BoolVis}}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsToastError}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource ExpenseBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.35"/>
+                </Border.Effect>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding ToastText}" Foreground="White" TextWrapping="Wrap"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="✕" Command="{Binding CloseToastCommand}" Margin="12,0,0,0"
+                            Background="Transparent" Padding="8,2" MinHeight="30" MinWidth="30"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
